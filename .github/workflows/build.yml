@@ -1,0 +1,41 @@
+name: Build Xiaomi Pad 6 Kernel
+
+on:
+  push:
+    branches: [thirteen]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v3
+
+      - name: Set up build environment
+        run: |
+          sudo apt update
+          sudo apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev git wget curl ccache zip unzip python2
+
+      - name: Clone GCC toolchains
+        run: |
+          git clone --depth=1 https://github.com/PixelExperience/toolchain-aarch64-linux-android-4.9 prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
+          git clone --depth=1 https://github.com/PixelExperience/toolchain-arm-linux-androideabi-4.9 prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9
+
+      - name: Build kernel
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=$(pwd)/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+          export CROSS_COMPILE_ARM32=$(pwd)/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+
+          make pipa_defconfig
+          make -j$(nproc)
+
+      - name: Upload kernel image
+        uses: actions/upload-artifact@3.1.3
+        with:
+          name: kernel-image
+          path: arch/arm64/boot/Image.gz-dtb
+          
